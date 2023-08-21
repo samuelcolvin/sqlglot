@@ -113,6 +113,12 @@ class DataFrame:
     def na(self) -> DataFrameNaFunctions:
         return DataFrameNaFunctions(self)
 
+    def _try_get_star(self) -> t.Optional[exp.Star]:
+        for expression in self.expression.expressions:
+            if isinstance(expression, exp.Star):
+                return expression
+        return None
+
     def _replace_cte_names_with_hashes(self, expression: exp.Select):
         replacement_mapping = {}
         for cte in expression.ctes:
@@ -771,15 +777,25 @@ class DataFrame:
         return self.copy().select(col.alias(colName), append=True)
 
     @operation(Operation.SELECT)
-    def withColumnRenamed(self, existing: str, new: str):
-        expression = self.expression.copy()
+    def withColumnRenamed(self, existing: str, new: str) -> DataFrame:
+        df = self.copy()
+        expression = df.expression
         existing_columns = [
             expression
             for expression in expression.expressions
             if expression.alias_or_name == existing
         ]
         if not existing_columns:
-            raise ValueError("Tried to rename a column that doesn't exist")
+            star = df._try_get_star()
+            if star:
+                excepts = star.args.get("except") or []
+                existing_id = exp.to_identifier(existing)
+                if existing_id not in excepts:
+                    excepts.append(existing_id)
+                star.set("except", excepts)
+                return df.select(F.col(existing).alias(new), append=True)
+            else:
+                raise ValueError("Tried to rename a column that doesn't exist")
         for existing_column in existing_columns:
             if isinstance(existing_column, exp.Column):
                 existing_column.replace(exp.alias_(existing_column, new))

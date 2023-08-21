@@ -19,24 +19,13 @@ class DataFrameReader:
         from sqlglot.dataframe.sql.dataframe import DataFrame
         from sqlglot.dataframe.sql.session import SparkSession
 
-        sqlglot.schema.add_table(tableName, dialect=SparkSession().dialect)
+        columns = sqlglot.schema.column_names(tableName, dialect=SparkSession().dialect)
 
         return DataFrame(
             self.spark,
             exp.Select()
-            .from_(
-                exp.to_table(tableName, dialect=SparkSession().dialect).transform(
-                    SparkSession().dialect.normalize_identifier
-                )
-            )
-            .select(
-                *(
-                    column
-                    for column in sqlglot.schema.column_names(
-                        tableName, dialect=SparkSession().dialect
-                    )
-                )
-            ),
+            .from_(exp.to_table(tableName, dialect=SparkSession().dialect).transform(SparkSession().dialect.normalize_identifier))
+            .select(*columns if columns else "*"),
         )
 
 

@@ -7,6 +7,16 @@ class DataFrameSQLValidator(DataFrameTestBase):
     def setUp(self) -> None:
         super().setUp()
         self.spark = SparkSession()
+
+
+class DataFrameSQLNoSchemaValidator(DataFrameTestBase):
+    def setUp(self) -> None:
+        self.df_employee = self.spark.table("employee")
+
+
+class DataFrameSQLSchemaValidator(DataFrameTestBase):
+    def setUp(self) -> None:
+        super().setUp()
         self.employee_schema = types.StructType(
             [
                 types.StructField("employee_id", types.IntegerType(), False),

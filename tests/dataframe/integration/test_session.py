@@ -1,10 +1,10 @@
 from pyspark.sql import functions as F
 
 from sqlglot.dataframe.sql import functions as SF
-from tests.dataframe.integration.dataframe_validator import DataFrameValidator
+from tests.dataframe.integration.dataframe_validator import DataFrameSchemaValidator
 
 
-class TestSessionFunc(DataFrameValidator):
+class TestSessionFunc(DataFrameSchemaValidator):
     def test_sql_simple_select(self):
         query = "SELECT fname, lname FROM employee"
         df = self.spark.sql(query)

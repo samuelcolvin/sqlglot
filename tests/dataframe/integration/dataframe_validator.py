@@ -10,7 +10,7 @@ if t.TYPE_CHECKING:
 
 
 @unittest.skipIf(SKIP_INTEGRATION, "Skipping Integration Tests since `SKIP_INTEGRATION` is set")
-class DataFrameValidator(unittest.TestCase):
+class BaseDataFrameValidator(unittest.TestCase):
     spark = None
     sqlglot = None
     df_employee = None
@@ -24,7 +24,7 @@ class DataFrameValidator(unittest.TestCase):
     sqlglot_district_schema = None
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         from pyspark import SparkConf
         from pyspark.sql import SparkSession, types
 
@@ -68,13 +68,11 @@ class DataFrameValidator(unittest.TestCase):
             (4, "Claire", "Littleton", 27, 2),
             (5, "Hugo", "Reyes", 29, 100),
         ]
-        cls.df_employee = cls.spark.createDataFrame(
+        df_employee_create = cls.spark.createDataFrame(
             data=employee_data, schema=cls.spark_employee_schema
         )
-        cls.dfs_employee = cls.sqlglot.createDataFrame(
-            data=employee_data, schema=cls.sqlglot_employee_schema
-        )
-        cls.df_employee.createOrReplaceTempView("employee")
+        df_employee_create.createOrReplaceTempView("employee")
+        cls.df_employee = cls.spark.table("employee")
 
         cls.spark_store_schema = types.StructType(
             [
@@ -98,11 +96,9 @@ class DataFrameValidator(unittest.TestCase):
             (1, "Hydra", 1, 37),
             (2, "Arrow", 2, 2000),
         ]
-        cls.df_store = cls.spark.createDataFrame(data=store_data, schema=cls.spark_store_schema)
-        cls.dfs_store = cls.sqlglot.createDataFrame(
-            data=store_data, schema=cls.sqlglot_store_schema
-        )
-        cls.df_store.createOrReplaceTempView("store")
+        df_store_create = cls.spark.createDataFrame(data=store_data, schema=cls.spark_store_schema)
+        df_store_create.createOrReplaceTempView("store")
+        cls.df_store = cls.spark.table("store")
 
         cls.spark_district_schema = types.StructType(
             [
@@ -128,25 +124,12 @@ class DataFrameValidator(unittest.TestCase):
             (1, "Temple", "Dogen"),
             (2, "Lighthouse", "Jacob"),
         ]
-        cls.df_district = cls.spark.createDataFrame(
+        df_district_create = cls.spark.createDataFrame(
             data=district_data, schema=cls.spark_district_schema
         )
-        cls.dfs_district = cls.sqlglot.createDataFrame(
-            data=district_data, schema=cls.sqlglot_district_schema
-        )
-        cls.df_district.createOrReplaceTempView("district")
-        sqlglot.schema.add_table("employee", cls.sqlglot_employee_schema, dialect="spark")
-        sqlglot.schema.add_table("store", cls.sqlglot_store_schema, dialect="spark")
-        sqlglot.schema.add_table("district", cls.sqlglot_district_schema, dialect="spark")
-
-    def setUp(self) -> None:
+        df_district_create.createOrReplaceTempView("district")
+        cls.df_district = cls.spark.table("district")
         warnings.filterwarnings("ignore", category=ResourceWarning)
-        self.df_spark_store = self.df_store.alias("df_store")  # type: ignore
-        self.df_spark_employee = self.df_employee.alias("df_employee")  # type: ignore
-        self.df_spark_district = self.df_district.alias("df_district")  # type: ignore
-        self.df_sqlglot_store = self.dfs_store.alias("store")  # type: ignore
-        self.df_sqlglot_employee = self.dfs_employee.alias("employee")  # type: ignore
-        self.df_sqlglot_district = self.dfs_district.alias("district")  # type: ignore
 
     def compare_spark_with_sqlglot(
         self, df_spark, df_sqlglot, no_empty=True, skip_schema_compare=False
@@ -172,3 +155,29 @@ class DataFrameValidator(unittest.TestCase):
     @classmethod
     def get_explain_plan(cls, df: "SparkDataFrame", mode: str = "extended") -> str:
         return df._sc._jvm.PythonSQLUtils.explainString(df._jdf.queryExecution(), mode)  # type: ignore
+
+
+@unittest.skipIf(SKIP_INTEGRATION, "Skipping Integration Tests since `SKIP_INTEGRATION` is set")
+class DataFrameSchemaValidator(BaseDataFrameValidator):
+    @classmethod
+    def setUpClass(cls):
+        from sqlglot import MappingSchema
+
+        super().setUpClass()
+        cls.sqlglot.schema = MappingSchema
+        sqlglot.schema.add_table("employee", cls.sqlglot_employee_schema)
+        sqlglot.schema.add_table("store", cls.sqlglot_store_schema)
+        sqlglot.schema.add_table("district", cls.sqlglot_district_schema)
+        cls.dfs_employee = cls.sqlglot.table("employee")
+        cls.dfs_store = cls.sqlglot.table("store")
+        cls.dfs_district = cls.sqlglot.table("district")
+
+
+@unittest.skipIf(SKIP_INTEGRATION, "Skipping Integration Tests since `SKIP_INTEGRATION` is set")
+class DataFrameNoSchemaValidator(BaseDataFrameValidator):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.dfs_employee = cls.sqlglot.table("employee")  # type: ignore
+        cls.dfs_store = cls.sqlglot.table("store")  # type: ignore
+        cls.dfs_district = cls.sqlglot.table("district")  # type: ignore

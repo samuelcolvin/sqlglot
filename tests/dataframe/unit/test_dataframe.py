@@ -1,9 +1,9 @@
 from sqlglot import expressions as exp
 from sqlglot.dataframe.sql.dataframe import DataFrame
-from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLValidator
+from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLSchemaValidator
 
 
-class TestDataframe(DataFrameSQLValidator):
+class TestDataframe(DataFrameSQLSchemaValidator):
     maxDiff = None
 
     def test_hash_select_expression(self):

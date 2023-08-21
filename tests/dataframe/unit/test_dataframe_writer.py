@@ -2,10 +2,10 @@ from unittest import mock
 
 import sqlglot
 from sqlglot.schema import MappingSchema
-from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLValidator
+from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLSchemaValidator
 
 
-class TestDataFrameWriter(DataFrameSQLValidator):
+class TestDataFrameWriter(DataFrameSQLSchemaValidator):
     maxDiff = None
 
     def test_insertInto_full_path(self):
