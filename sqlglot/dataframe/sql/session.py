@@ -158,7 +158,7 @@ class SparkSession:
         SQLFRAME_DIALECT_KEY = "sqlframe.dialect"
 
         def __init__(self):
-            self.dialect = "spark"
+            self.dialect = SparkSession.DEFAULT_DIALECT
 
         def __getattr__(self, item) -> SparkSession.Builder:
             return self

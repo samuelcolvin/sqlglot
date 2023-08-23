@@ -9,12 +9,13 @@ class DataFrameSQLValidator(DataFrameTestBase):
         self.spark = SparkSession()
 
 
-class DataFrameSQLNoSchemaValidator(DataFrameTestBase):
+class DataFrameSQLNoSchemaValidator(DataFrameSQLValidator):
     def setUp(self) -> None:
+        super().setUp()
         self.df_employee = self.spark.table("employee")
 
 
-class DataFrameSQLSchemaValidator(DataFrameTestBase):
+class DataFrameSQLSchemaValidator(DataFrameSQLValidator):
     def setUp(self) -> None:
         super().setUp()
         self.employee_schema = types.StructType(

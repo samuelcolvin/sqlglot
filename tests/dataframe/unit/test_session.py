@@ -1,10 +1,10 @@
 import sqlglot
 from sqlglot.dataframe.sql import functions as F, types
 from sqlglot.dataframe.sql.session import SparkSession
-from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLValidator
+from tests.dataframe.unit.dataframe_sql_validator import DataFrameSQLSchemaValidator
 
 
-class TestDataframeSession(DataFrameSQLValidator):
+class TestDataframeSession(DataFrameSQLSchemaValidator):
     def test_cdf_one_row(self):
         df = self.spark.createDataFrame([[1, 2]], ["cola", "colb"])
         expected = "SELECT `a2`.`cola` AS `cola`, `a2`.`colb` AS `colb` FROM VALUES (1, 2) AS `a2`(`cola`, `colb`)"
