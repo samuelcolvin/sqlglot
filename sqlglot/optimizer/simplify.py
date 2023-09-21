@@ -77,6 +77,7 @@ def simplify(expression):
         node = simplify_coalesce(node)
         node.parent = expression.parent
         node = simplify_literals(node, root)
+        node = simplify_equality(node)
         node = simplify_parens(node)
         node = simplify_datetrunc_predicate(node)
 
@@ -365,6 +366,93 @@ def absorb_and_eliminate(expression, root=True):
                         a.replace(ab)
                         b.replace(ab)
 
+    return expression
+
+
+INVERSE_DATE_OPS = {
+    exp.DateAdd: exp.Sub,
+    exp.DateSub: exp.Add,
+    exp.DatetimeAdd: exp.Sub,
+    exp.DatetimeSub: exp.Add,
+}
+
+INVERSE_OPS = {
+    exp.Add: exp.Sub,
+    exp.Sub: exp.Add,
+    **INVERSE_DATE_OPS,
+}
+
+
+def _is_number(expression):
+    return expression.is_number
+
+
+def _is_date(expression):
+    return isinstance(expression, exp.Cast) and extract_date(expression)
+
+
+def _is_interval(expression):
+    return isinstance(expression, exp.Interval) and extract_interval(expression)
+
+
+@catch(ModuleNotFoundError, UnsupportedUnit)
+def simplify_equality(expression):
+    """
+    Use the subtraction and addition properties of equality to simplify expressions:
+
+        x + 1 = 3 becomes x = 2
+
+    There are two binary operations in the above expression: + and =
+    Here's how we reference all the operands in the code below:
+
+        x + 1 = 3
+        a   b   r
+          l
+    """
+    if isinstance(expression, COMPARISONS):
+        l, r = expression.left, expression.right
+
+        if l.__class__ in INVERSE_OPS:
+            pass
+        elif r.__class__ in INVERSE_OPS:
+            l, r = r, l
+        else:
+            return expression
+
+        if r.is_number:
+            a_predicate = _is_number
+            b_predicate = _is_number
+        elif _is_date(r):
+            a_predicate = _is_date
+            b_predicate = _is_interval
+        else:
+            return expression
+
+        if l.__class__ in INVERSE_DATE_OPS:
+            a = l.this
+            b = exp.Interval(
+                this=l.expression.copy(),
+                unit=l.unit.copy(),
+            )
+        else:
+            a, b = l.left, l.right
+
+        if not a_predicate(a) and b_predicate(b):
+            pass
+        elif not a_predicate(b) and b_predicate(a):
+            a, b = b, a
+        else:
+            return expression
+
+        inverse = INVERSE_OPS.get(l.__class__)
+
+        return expression.__class__(
+            this=a.copy(),
+            expression=inverse(
+                this=r.copy(),
+                expression=b.copy()
+            )
+        )
     return expression
 
 
@@ -771,6 +859,12 @@ def interval(unit: str, n: int = 1):
         return relativedelta(weeks=1 * n)
     if unit == "day":
         return relativedelta(days=1 * n)
+    if unit == "hour":
+        return relativedelta(hours=1 * n)
+    if unit == "minute":
+        return relativedelta(minutes=1 * n)
+    if unit == "second":
+        return relativedelta(seconds=1 * n)
 
     raise UnsupportedUnit(f"Unsupported unit: {unit}")
 
